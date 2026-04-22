@@ -1,0 +1,862 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>ELN iMDS Flow Cytometry Scoring</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root{
+  --ok:#006100; --okFill:#C6EFCE; --okBorder:#006100;
+  --warn:#7d5a00; --warnFill:#FFF3CD; --warnBorder:#ffc107;
+  --bad:#9C0006; --badFill:#FFC7CE; --badBorder:#9C0006;
+  --eln:#003087;
+  --bg:#f0f2f5;
+  --card:#fff;
+  --line:#d8dce3;
+  --ink:#1a1a2e;
+  --muted:#6b7280;
+  --radius:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.5}
+
+/* HEADER */
+.header{background:var(--eln);color:#fff;padding:0 24px;display:flex;align-items:center;gap:16px;height:60px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+.eln-logo{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.eln-badge{background:#fff;color:var(--eln);font-weight:900;font-size:18px;padding:3px 10px;border-radius:6px;letter-spacing:.5px}
+.eln-sub{font-size:11px;opacity:.8;line-height:1.2}
+.header-title{font-size:15px;font-weight:700;flex:1;text-align:center;letter-spacing:.3px}
+.header-actions{display:flex;gap:8px;flex-shrink:0}
+.hbtn{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 12px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;transition:background .15s}
+.hbtn:hover{background:rgba(255,255,255,.28)}
+.hbtn.primary{background:#fff;color:var(--eln)}
+.hbtn.primary:hover{background:#e8eef8}
+
+/* TABS */
+.tabs{background:#fff;border-bottom:1px solid var(--line);display:flex;gap:0;padding:0 24px}
+.tab{padding:12px 18px;cursor:pointer;font-weight:600;font-size:13px;color:var(--muted);border-bottom:3px solid transparent;transition:all .15s;white-space:nowrap}
+.tab:hover{color:var(--eln)}
+.tab.active{color:var(--eln);border-bottom-color:var(--eln)}
+
+/* MAIN LAYOUT */
+.main{padding:18px 24px;max-width:1400px;margin:0 auto}
+.panel{display:none}
+.panel.active{display:block}
+
+.grid2{display:grid;grid-template-columns:360px 1fr;gap:18px}
+.grid22{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:1100px){.grid2{grid-template-columns:1fr}}
+@media(max-width:800px){.grid22{grid-template-columns:1fr}}
+
+/* CARDS */
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px;margin-bottom:0}
+.card+.card{margin-top:14px}
+.card-title{font-size:14px;font-weight:700;color:var(--eln);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.card-title svg{flex-shrink:0}
+
+/* FORM ELEMENTS */
+.frow{display:grid;grid-template-columns:180px 1fr;gap:8px;align-items:center;margin:7px 0}
+.frow label{font-weight:600;font-size:13px;color:#374151}
+.frow input,.frow select,.frow textarea{padding:7px 10px;border-radius:8px;border:1px solid var(--line);width:100%;font-size:13px;background:#fff;transition:border .15s}
+.frow input:focus,.frow select:focus,.frow textarea:focus{outline:none;border-color:var(--eln);box-shadow:0 0 0 3px rgba(0,48,135,.1)}
+.frow textarea{resize:vertical;min-height:54px}
+.frow-sm{grid-template-columns:160px 1fr}
+hr.sep{border:none;border-top:1px solid #eee;margin:12px 0}
+.hint{font-size:11px;color:var(--muted);margin-top:2px}
+
+/* NUMERIC INPUT ROW with ref range */
+.nrow{display:grid;grid-template-columns:200px 120px 1fr;gap:8px;align-items:center;margin:7px 0}
+.nrow label{font-weight:600;font-size:13px}
+.nrow input{padding:7px 10px;border-radius:8px;border:1px solid var(--line);font-size:13px;background:#fff}
+.nrow input:focus{outline:none;border-color:var(--eln);box-shadow:0 0 0 3px rgba(0,48,135,.1)}
+.ref{font-size:11px;color:var(--muted)}
+
+/* CHECKBOXES */
+.chkGrid{display:grid;grid-template-columns:1fr 1fr;gap:6px 12px;margin-top:6px}
+.chkGrid label{display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;padding:4px 6px;border-radius:6px;transition:background .1s}
+.chkGrid label:hover{background:#f3f4f6}
+.chkGrid input[type=checkbox]{width:15px;height:15px;accent-color:var(--eln);flex-shrink:0}
+
+/* STATUS PILLS */
+.pill{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:999px;font-size:12px;font-weight:700;margin:2px 4px 2px 0}
+.pill.ok{background:var(--okFill);color:var(--ok);border:1px solid var(--okBorder)}
+.pill.warn{background:var(--warnFill);color:var(--warn);border:1px solid var(--warnBorder)}
+.pill.bad{background:var(--badFill);color:var(--bad);border:1px solid var(--badBorder)}
+.pill svg{width:12px;height:12px}
+
+/* DASHBOARD TILES */
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.tile{border-radius:10px;padding:12px 14px;border:1px solid var(--line);background:#fff;transition:all .2s}
+.tile .t-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;opacity:.8}
+.tile .t-val{font-size:24px;font-weight:900;margin-top:4px}
+.tile .t-sub{font-size:11px;margin-top:2px;opacity:.75}
+.tile.ok{background:var(--okFill);border-color:var(--ok);color:var(--ok)}
+.tile.warn{background:var(--warnFill);border-color:var(--warnBorder);color:var(--warn)}
+.tile.bad{background:var(--badFill);border-color:var(--bad);color:var(--bad)}
+
+/* MODULE OUTPUT BOXES */
+.modOut{background:#fafafa;border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-top:8px;font-size:12.5px;line-height:1.6}
+.modOut.ok{background:var(--okFill);border-color:var(--okBorder)}
+.modOut.bad{background:var(--badFill);border-color:var(--badBorder)}
+.modOut.warn{background:var(--warnFill);border-color:var(--warnBorder)}
+
+/* SEVERITY BAR */
+.sevBar{display:grid;grid-template-columns:1fr 1fr 1fr;border-radius:8px;overflow:hidden;margin-top:8px;height:32px}
+.sevSeg{display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;transition:all .3s}
+.sevSeg.ok{background:var(--okFill);color:var(--ok)}
+.sevSeg.warn{background:var(--warnFill);color:var(--warn)}
+.sevSeg.bad{background:var(--badFill);color:var(--bad)}
+.sevSeg.active{outline:3px solid #1a1a2e;outline-offset:-2px}
+
+/* REPORT */
+.reportBox{background:#fafafa;border:1px solid var(--line);border-radius:10px;padding:14px;font-family:ui-monospace,Consolas,monospace;font-size:12px;line-height:1.7;white-space:pre-wrap;max-height:500px;overflow-y:auto}
+.btnRow{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+.btn{padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:#fff;cursor:pointer;font-weight:700;font-size:13px;transition:all .15s}
+.btn:hover{background:#f3f4f6}
+.btn.primary{background:var(--eln);color:#fff;border-color:var(--eln)}
+.btn.primary:hover{background:#002575}
+
+/* CUTOFF EDITOR */
+.cutoffGrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.cutoffCard{background:#f8f9fb;border:1px solid var(--line);border-radius:10px;padding:12px}
+.cutoffCard h4{font-size:13px;font-weight:700;color:var(--eln);margin-bottom:8px}
+.crow{display:grid;grid-template-columns:1fr 90px;gap:8px;align-items:center;margin:5px 0}
+.crow label{font-size:12px;color:#374151}
+.crow input{padding:5px 8px;border-radius:6px;border:1px solid var(--line);font-size:12px;text-align:right}
+.crow input:focus{outline:none;border-color:var(--eln)}
+
+/* NOTICE */
+.notice{background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;padding:10px 14px;font-size:12px;color:#1e40af;margin-bottom:14px}
+
+/* PRINT */
+@media print{
+  .header,.tabs,.hbtn,.btnRow,.btn,.notice{display:none!important}
+  .panel{display:block!important}
+  body{background:#fff}
+  .card{break-inside:avoid;box-shadow:none}
+  .reportBox{max-height:none}
+}
+
+/* ABOUT */
+.about-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.ref-list{list-style:none;padding:0}
+.ref-list li{padding:6px 0;border-bottom:1px solid #f0f0f0;font-size:13px}
+.ref-list li:last-child{border:none}
+
+/* RESPONSIVE NROW */
+@media(max-width:900px){
+  .nrow{grid-template-columns:1fr 100px}
+  .ref{display:none}
+  .frow{grid-template-columns:1fr}
+  .tiles{grid-template-columns:repeat(2,1fr)}
+  .cutoffGrid{grid-template-columns:1fr}
+  .about-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="eln-logo">
+    <div class="eln-badge">ELN</div>
+    <div class="eln-sub">European<br>LeukemiaNet</div>
+  </div>
+  <div class="header-title">iMDS Flow Cytometry Scoring Tool</div>
+  <div class="header-actions">
+    <button class="hbtn" onclick="window.print()">🖨 Print / PDF</button>
+    <button class="hbtn primary" onclick="doReset()">↺ Reset</button>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <div class="tab active" data-tab="scoring">Scoring</div>
+  <div class="tab" data-tab="report">Report</div>
+  <div class="tab" data-tab="cutoffs">Configure Cutoffs</div>
+  <div class="tab" data-tab="about">About &amp; References</div>
+</div>
+
+<!-- ===== SCORING PANEL ===== -->
+<div class="main">
+<div class="panel active" id="panel-scoring">
+
+  <div class="grid2">
+
+    <!-- LEFT: Case + Dashboard -->
+    <div>
+      <div class="card">
+        <div class="card-title">
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+          Case Details
+        </div>
+        <div class="grid22">
+          <div>
+            <div class="frow frow-sm"><label for="hospitalNo">Hospital number</label><input id="hospitalNo" autocomplete="off"></div>
+            <div class="frow frow-sm"><label for="sampleId">Sample ID</label><input id="sampleId" autocomplete="off"></div>
+            <div class="frow frow-sm"><label for="surname">Surname</label><input id="surname" autocomplete="off"></div>
+            <div class="frow frow-sm"><label for="forename">Forename</label><input id="forename" autocomplete="off"></div>
+            <div class="frow frow-sm"><label for="sex">Sex</label>
+              <select id="sex"><option value="">–</option><option>Female</option><option>Male</option><option>Other / Not stated</option></select>
+            </div>
+          </div>
+          <div>
+            <div class="frow frow-sm"><label for="dob">Date of birth</label><input id="dob" type="date"></div>
+            <div class="frow frow-sm"><label for="dateSample">Date of sample</label><input id="dateSample" type="date"></div>
+            <div class="frow frow-sm"><label for="dateRun">Date run</label><input id="dateRun" type="date"></div>
+            <div class="frow frow-sm"><label for="clinical">Clinical indication</label><input id="clinical" autocomplete="off"></div>
+            <div class="frow frow-sm"><label for="operator">Reporting scientist</label><input id="operator" autocomplete="off"></div>
+          </div>
+        </div>
+        <div class="frow"><label for="specimen">Specimen type</label>
+          <select id="specimen"><option>Bone marrow aspirate</option><option>Peripheral blood</option><option>Other</option></select>
+        </div>
+        <div class="frow"><label for="notes">Notes</label><textarea id="notes" placeholder="Free text notes (optional)"></textarea></div>
+        <p class="hint" style="margin-top:6px">Decision support only. Interpret alongside morphology, cytogenetics and molecular findings.</p>
+      </div>
+
+      <div class="card" style="margin-top:14px">
+        <div class="card-title">
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+          Flow Cytometry Dashboard
+        </div>
+        <div class="tiles">
+          <div class="tile warn" id="tileOgata"><div class="t-label">Ogata Score</div><div class="t-val" id="tileOgataVal">–</div><div class="t-sub">Diagnostic module</div></div>
+          <div class="tile warn" id="tileEry"><div class="t-label">Erythroid Score</div><div class="t-val" id="tileEryVal">–</div><div class="t-sub">Erythroid module</div></div>
+          <div class="tile warn" id="tileMP"><div class="t-label">Progenitors</div><div class="t-val" id="tileMPVal">–</div><div class="t-sub">Myeloid progenitor module</div></div>
+          <div class="tile warn" id="tileGran"><div class="t-label">Granulocytes</div><div class="t-val" id="tileGranVal">–</div><div class="t-sub">Granulocyte module</div></div>
+          <div class="tile warn" id="tileMono"><div class="t-label">Monocytes</div><div class="t-val" id="tileMonoVal">–</div><div class="t-sub">Monocyte module</div></div>
+          <div class="tile warn" id="tileInt"><div class="t-label">iMDS Label</div><div class="t-val" id="tileIntVal">–</div><div class="t-sub">Integrated conclusion</div></div>
+        </div>
+        <div style="margin-top:14px">
+          <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:4px">INTEGRATED SEVERITY</div>
+          <div class="sevBar">
+            <div class="sevSeg ok" id="seg0">Normal / Mild</div>
+            <div class="sevSeg warn" id="seg1">Moderate</div>
+            <div class="sevSeg bad" id="seg2">Severe</div>
+          </div>
+        </div>
+        <div style="margin-top:14px">
+          <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:4px">ABERRANCY BURDEN</div>
+          <div style="background:#f3f4f6;border-radius:8px;height:24px;overflow:hidden;position:relative">
+            <div id="aberBar" style="height:100%;width:0%;background:var(--okFill);border-right:2px solid var(--ok);transition:width .3s,background .3s"></div>
+            <div id="aberLabel" style="position:absolute;inset:0;display:flex;align-items:center;padding:0 10px;font-size:12px;font-weight:700;color:#374151"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Scoring modules -->
+    <div>
+
+      <div class="grid22">
+
+        <!-- Ogata -->
+        <div class="card">
+          <div class="card-title">Diagnostic Score (Ogata)</div>
+          <div class="nrow"><label for="mpPct">Myeloid progenitor %</label><input id="mpPct" type="number" step="0.1" placeholder="e.g. 1.2"><span class="ref" id="refMpPct"></span></div>
+          <div class="nrow"><label for="cd45">CD45 expression</label><input id="cd45" type="number" step="0.1" placeholder="e.g. 6.5"><span class="ref" id="refCd45"></span></div>
+          <div class="nrow"><label for="sscGrans">SSC granulocytes</label><input id="sscGrans" type="number" step="0.1" placeholder="e.g. 7.0"><span class="ref" id="refSsc"></span></div>
+          <div class="nrow"><label for="bcpPct">B-cell progenitor %</label><input id="bcpPct" type="number" step="0.1" placeholder="e.g. 9.0"><span class="ref" id="refBcp"></span></div>
+          <div class="modOut" id="ogataOut"><span style="color:var(--muted);font-size:12px">Enter values above</span></div>
+        </div>
+
+        <!-- Erythroid -->
+        <div class="card">
+          <div class="card-title">Erythroid Score</div>
+          <div class="nrow"><label for="cd71cv">CD71 CV (%)</label><input id="cd71cv" type="number" step="0.1" placeholder=""><span class="ref" id="refCd71cv"></span></div>
+          <div class="nrow"><label for="cd36cv">CD36 CV (%)</label><input id="cd36cv" type="number" step="0.1" placeholder=""><span class="ref" id="refCd36cv"></span></div>
+          <div class="nrow"><label for="cd71expr">CD71 expression (MFI)</label><input id="cd71expr" type="number" step="0.1" placeholder=""><span class="ref" id="refCd71expr"></span></div>
+          <div class="nrow"><label for="cd117ery">CD117+ precursors (%)</label><input id="cd117ery" type="number" step="0.1" placeholder=""><span class="ref" id="refCd117"></span></div>
+          <div class="modOut" id="eryOut"><span style="color:var(--muted);font-size:12px">Enter values above</span></div>
+        </div>
+
+      </div>
+
+      <!-- Myeloid Progenitors -->
+      <div class="card" style="margin-top:14px">
+        <div class="card-title">Myeloid Progenitors — Aberrancy Checklist</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Myeloid progenitor % is shared with the Ogata module above. Tick all observed aberrancies.</div>
+        <div class="grid22">
+          <div>
+            <div style="font-size:12px;font-weight:700;color:var(--eln);margin-bottom:4px">EARLY ABERRANCIES (Group A)</div>
+            <div class="chkGrid" id="mpEarlyGrid"></div>
+          </div>
+          <div>
+            <div style="font-size:12px;font-weight:700;color:var(--eln);margin-bottom:4px">OTHER ABERRANCIES (Group B)</div>
+            <div class="chkGrid" id="mpOtherGrid"></div>
+          </div>
+        </div>
+        <div class="modOut" id="mpAberOut" style="margin-top:10px"><span style="color:var(--muted);font-size:12px">Enter myeloid progenitor % above</span></div>
+      </div>
+
+      <div class="grid22" style="margin-top:14px">
+
+        <!-- Granulocytes -->
+        <div class="card">
+          <div class="card-title">Granulocytes</div>
+          <div class="nrow"><label for="neutLymph">Neutrophil / Lymphocyte ratio</label><input id="neutLymph" type="number" step="0.01" placeholder=""><span class="ref" id="refNeutLymph"></span></div>
+          <div style="font-size:12px;font-weight:700;color:var(--eln);margin:8px 0 4px">Granulocyte Aberrancies</div>
+          <div class="chkGrid" id="granGrid"></div>
+          <div class="modOut" id="granOut" style="margin-top:10px"><span style="color:var(--muted);font-size:12px">Enter data above</span></div>
+        </div>
+
+        <!-- Monocytes -->
+        <div class="card">
+          <div class="card-title">Monocytes</div>
+          <div class="nrow"><label for="monoPct">Monocyte %</label><input id="monoPct" type="number" step="0.1" placeholder=""><span class="ref" id="refMonoPct"></span></div>
+          <div style="font-size:12px;font-weight:700;color:var(--eln);margin:8px 0 4px">Monocyte Aberrancies</div>
+          <div class="chkGrid" id="monoGrid"></div>
+          <div class="modOut" id="monoOut" style="margin-top:10px"><span style="color:var(--muted);font-size:12px">Enter data above</span></div>
+        </div>
+
+      </div>
+
+      <!-- Integrated -->
+      <div class="card" style="margin-top:14px">
+        <div class="card-title">Integrated iMDS Conclusion</div>
+        <div class="modOut" id="intOut"><span style="color:var(--muted);font-size:12px">Complete modules above</span></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ===== REPORT PANEL ===== -->
+<div class="panel" id="panel-report">
+  <div class="notice">This report is generated automatically from entered data. Review all fields before issuing. This tool is for decision support only.</div>
+  <div class="card">
+    <div class="card-title">Auto-generated Flow Cytometry Report</div>
+    <div class="reportBox" id="reportText"></div>
+    <div class="btnRow">
+      <button class="btn primary" id="copyBtn">📋 Copy to clipboard</button>
+      <span id="copyStatus" style="font-size:12px;color:var(--ok);align-self:center"></span>
+    </div>
+  </div>
+</div>
+
+<!-- ===== CUTOFFS PANEL ===== -->
+<div class="panel" id="panel-cutoffs">
+  <div class="notice">Adjust cutoff values below to match your validated reference ranges or updated ELN guidance. Changes take effect immediately across all scoring modules.</div>
+  <div class="cutoffGrid">
+
+    <div class="cutoffCard">
+      <h4>Diagnostic Score (Ogata) Module</h4>
+      <div class="crow"><label>MP% abnormal threshold (above)</label><input id="c_mpHigh" type="number" step="0.1" value="2"></div>
+      <div class="crow"><label>CD45 lower normal limit</label><input id="c_cd45Low" type="number" step="0.1" value="4.5"></div>
+      <div class="crow"><label>CD45 upper normal limit</label><input id="c_cd45High" type="number" step="0.1" value="7"></div>
+      <div class="crow"><label>SSC granulocytes lower limit (below)</label><input id="c_sscLow" type="number" step="0.1" value="6"></div>
+      <div class="crow"><label>BCP% lower limit (below)</label><input id="c_bcpLow" type="number" step="0.1" value="5"></div>
+      <div class="crow"><label>Ogata abnormal score threshold (≥)</label><input id="c_ogataScore" type="number" step="1" value="2"></div>
+    </div>
+
+    <div class="cutoffCard">
+      <h4>Erythroid Score Module</h4>
+      <div class="crow"><label>CD71 CV abnormal threshold (above)</label><input id="c_cd71cv" type="number" step="0.1" value="90"></div>
+      <div class="crow"><label>CD36 CV abnormal threshold (above)</label><input id="c_cd36cv" type="number" step="0.1" value="92"></div>
+      <div class="crow"><label>CD71 expression low threshold (below)</label><input id="c_cd71expr" type="number" step="1" value="178"></div>
+      <div class="crow"><label>CD117+ precursors lower limit</label><input id="c_cd117Low" type="number" step="0.1" value="2.1"></div>
+      <div class="crow"><label>CD117+ precursors upper limit</label><input id="c_cd117High" type="number" step="0.1" value="12.4"></div>
+      <div class="crow"><label>Erythroid abnormal score threshold (≥)</label><input id="c_eryScore" type="number" step="1" value="2"></div>
+    </div>
+
+    <div class="cutoffCard">
+      <h4>Myeloid Progenitor Module</h4>
+      <div class="crow"><label>MP% high threshold (above, → abnormal)</label><input id="c_mpVHigh" type="number" step="0.1" value="5"></div>
+      <div class="crow"><label>Group A aberrancies threshold (≥)</label><input id="c_mpA" type="number" step="1" value="1"></div>
+      <div class="crow"><label>Group B aberrancies threshold (≥)</label><input id="c_mpB" type="number" step="1" value="2"></div>
+    </div>
+
+    <div class="cutoffCard">
+      <h4>Granulocyte &amp; Monocyte Modules</h4>
+      <div class="crow"><label>Neut/Lymph ratio lower limit (below)</label><input id="c_neutLow" type="number" step="0.01" value="1"></div>
+      <div class="crow"><label>Monocyte % upper limit (above)</label><input id="c_monoHigh" type="number" step="0.1" value="10"></div>
+      <hr style="margin:8px 0;border:none;border-top:1px solid #ddd">
+      <h4 style="margin-bottom:8px">Integrated Conclusion</h4>
+      <div class="crow"><label>Modules abnormal for iMDS label (≥)</label><input id="c_intScore" type="number" step="1" value="2"></div>
+    </div>
+
+  </div>
+  <div class="btnRow" style="margin-top:14px">
+    <button class="btn" onclick="resetCutoffs()">↺ Restore defaults</button>
+  </div>
+</div>
+
+<!-- ===== ABOUT PANEL ===== -->
+<div class="panel" id="panel-about">
+  <div class="about-grid">
+    <div>
+      <div class="card">
+        <div class="card-title">About This Tool</div>
+        <p style="font-size:13px;line-height:1.7;margin-bottom:10px">This tool implements the ELN iMDS (integrated Myelodysplastic Syndrome) flow cytometry scoring framework for bone marrow immunophenotyping in the diagnostic work-up of suspected MDS.</p>
+        <p style="font-size:13px;line-height:1.7;margin-bottom:10px">The scoring system incorporates five modules: the Ogata diagnostic score, erythroid aberrancy score, myeloid progenitor aberrancy assessment, granulocyte dysplasia features, and monocyte aberrancy assessment. The integrated conclusion is reached when ≥2 modules are classified as abnormal.</p>
+        <p style="font-size:13px;line-height:1.7;margin-bottom:10px">Cutoff values are adjustable in the <strong>Configure Cutoffs</strong> tab to allow local validation and adaptation as ELN guidance evolves.</p>
+        <p style="font-size:13px;color:var(--muted)">This tool is intended for use by trained haematology laboratory scientists and clinicians. It does not replace expert morphological review, cytogenetic analysis or clinical judgment.</p>
+      </div>
+      <div class="card" style="margin-top:14px">
+        <div class="card-title">Panel Requirements</div>
+        <p style="font-size:13px;line-height:1.7;margin-bottom:8px">For full scoring, the following markers are required:</p>
+        <ul style="font-size:13px;line-height:2;padding-left:18px">
+          <li>CD45, CD34, CD117, CD13, CD33, CD11b, CD15, CD16, CD10</li>
+          <li>CD71, CD36, CD235a (erythroid lineage)</li>
+          <li>CD14, HLA-DR (monocyte lineage)</li>
+          <li>CD7, CD56, CD19, CD5, CD2, CD123 (aberrant antigens)</li>
+          <li>CD38, CD19, CD10, TdT (B-cell progenitors)</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <div class="card-title">Key References</div>
+        <ul class="ref-list">
+          <li><strong>Ogata et al. 2006</strong> — Diagnostic application of flow cytometric characteristics of CD34+ cells in low-grade MDS. <em>Blood</em>. 108(3):1037–1044.</li>
+          <li><strong>Cremers et al. 2017</strong> — Implementation of erythroid lineage analysis by flow cytometry in diagnostic models for myelodysplastic syndromes. <em>Haematologica</em>. 102:320–326. <span style="color:var(--eln);font-weight:600">[Basis for erythroid score module]</span></li>
+          <li><strong>Della Porta et al. 2012</strong> — Multicenter validation of a reproducible flow cytometric score for the diagnosis of low-grade MDS: results of a European LeukemiaNet study. <em>Haematologica</em>. 97(8):1209–1217.</li>
+          <li><strong>Westers et al. 2012</strong> — Standardization of flow cytometry in myelodysplastic syndromes: a report from an international consortium and the European LeukemiaNet working group. <em>Leukemia</em>. 26:1730–1741.</li>
+          <li><strong>Porwit et al. 2014</strong> — Revisiting guidelines for integration of flow cytometry results in the WHO classification of myelodysplastic syndromes — proposal from the International/European LeukemiaNet Working Group for Flow Cytometry in MDS. <em>Leukemia</em>. 28(9):1793–1798.</li>
+          <li><strong>Kern et al. 2023</strong> — Multicenter prospective evaluation of diagnostic potential of flow cytometric aberrancies in myelodysplastic syndromes by the ELN iMDS flow working group. <em>Cytometry Part B: Clinical Cytometry</em>. 104(1).</li>
+          <li><strong>van de Loosdrecht et al. 2023</strong> — Clinical application of flow cytometry in patients with unexplained cytopenia and suspected myelodysplastic syndrome: a report of the European LeukemiaNet International MDS-Flow Cytometry Working Group. <em>Cytometry B Clin Cytom</em>. 104(1):77–86.</li>
+        </ul>
+        <p style="font-size:11px;color:var(--muted);margin-top:10px">Please verify all references against source publications before distribution.</p>
+      </div>
+      <div class="card" style="margin-top:14px">
+        <div class="card-title">Version &amp; Contact</div>
+        <p style="font-size:13px;line-height:1.8">
+          Version: 3.0<br>
+          Framework: ELN iMDS Working Party<br>
+          Tool type: Clinical decision support (no patient data is stored or transmitted)<br><br>
+          <span style="color:var(--muted)">For queries regarding this tool, contact your regional ELN iMDS representative.</span>
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /main -->
+
+<script>
+/* ===== PARAMETER DEFINITIONS ===== */
+const TABLE = {
+  mp: {
+    early: [
+      {id:"mp_cd7",  label:"CD7 on myeloid progenitors"},
+      {id:"mp_cd56", label:"CD56 on myeloid progenitors"},
+      {id:"mp_cd19", label:"CD19 on myeloid progenitors"},
+      {id:"mp_cd5",  label:"CD5 on myeloid progenitors"},
+      {id:"mp_cd2",  label:"CD2 on myeloid progenitors"},
+    ],
+    other: [
+      {id:"mp_cd13",  label:"Aberrant CD13"},
+      {id:"mp_cd33",  label:"Aberrant CD33"},
+      {id:"mp_cd11b", label:"CD11b on progenitors"},
+      {id:"mp_cd15",  label:"CD15 on progenitors"},
+      {id:"mp_ssc",   label:"Aberrant SSC"},
+      {id:"mp_cd123", label:"CD123 on progenitors"},
+    ]
+  },
+  gran: [
+    {id:"g_cd7",   label:"CD7 on granulocytes"},
+    {id:"g_cd14",  label:"CD14 on granulocytes"},
+    {id:"g_cd19",  label:"CD19 on granulocytes"},
+    {id:"g_cd2",   label:"CD2 on granulocytes"},
+    {id:"g_cd5",   label:"CD5 on granulocytes"},
+    {id:"g_cd56",  label:"CD56 on granulocytes"},
+    {id:"g_dr",    label:"HLA-DR on granulocytes"},
+    {id:"g_13_11b",label:"CD13 vs CD11b aberrant pattern"},
+    {id:"g_13_16", label:"CD13 vs CD16 aberrant pattern"},
+    {id:"g_16_10", label:"CD16 vs CD10 aberrant pattern"},
+    {id:"g_cd33",  label:"Aberrant CD33 expression"},
+  ],
+  mono: [
+    {id:"m_incImm",  label:"Increased immature monocytes"},
+    {id:"m_dr_11b",  label:"Aberrant HLA-DR vs CD11b"},
+    {id:"m_cd13",    label:"Aberrant CD13"},
+    {id:"m_cd33",    label:"Aberrant CD33"},
+    {id:"m_cd16pct", label:"Abnormal % CD16 on monocytes"},
+    {id:"m_cd56",    label:"CD56 on monocytes"},
+    {id:"m_cd34",    label:"CD34 on monocytes"},
+  ]
+};
+
+/* ===== GET CUTOFF VALUES ===== */
+function C(id){ const v = document.getElementById(id)?.value; return v === "" || v === undefined ? NaN : Number(v); }
+function cutoffs(){
+  return {
+    mpHigh:    C("c_mpHigh"),
+    cd45Low:   C("c_cd45Low"),
+    cd45High:  C("c_cd45High"),
+    sscLow:    C("c_sscLow"),
+    bcpLow:    C("c_bcpLow"),
+    ogataScore:C("c_ogataScore"),
+    cd71cv:    C("c_cd71cv"),
+    cd36cv:    C("c_cd36cv"),
+    cd71expr:  C("c_cd71expr"),
+    cd117Low:  C("c_cd117Low"),
+    cd117High: C("c_cd117High"),
+    eryScore:  C("c_eryScore"),
+    mpVHigh:   C("c_mpVHigh"),
+    mpA:       C("c_mpA"),
+    mpB:       C("c_mpB"),
+    neutLow:   C("c_neutLow"),
+    monoHigh:  C("c_monoHigh"),
+    intScore:  C("c_intScore"),
+  };
+}
+
+const DEFAULTS = {
+  c_mpHigh:2, c_cd45Low:4.5, c_cd45High:7, c_sscLow:6, c_bcpLow:5, c_ogataScore:2,
+  c_cd71cv:90, c_cd36cv:92, c_cd71expr:178, c_cd117Low:2.1, c_cd117High:12.4, c_eryScore:2,
+  c_mpVHigh:5, c_mpA:1, c_mpB:2, c_neutLow:1, c_monoHigh:10, c_intScore:2
+};
+
+function resetCutoffs(){
+  Object.entries(DEFAULTS).forEach(([k,v]) => { const el = document.getElementById(k); if(el) el.value = v; });
+  render();
+}
+
+/* ===== HELPERS ===== */
+function nval(id){ const v = document.getElementById(id)?.value; if(v === "" || v === null || v === undefined) return null; const n = Number(v); return isFinite(n) ? n : null; }
+function countChecked(sel){ return Array.from(document.querySelectorAll(sel)).filter(x => x.checked).length; }
+function pill(text, cls){ return `<span class="pill ${cls}">${statusIcon(cls)} ${text}</span>`; }
+function statusIcon(cls){ return cls === "ok" ? "✓" : cls === "bad" ? "✗" : "○"; }
+
+/* ===== REFERENCE RANGE LABELS ===== */
+function updateRefLabels(co){
+  document.getElementById("refMpPct").textContent    = `Normal: ≤${co.mpHigh}%`;
+  document.getElementById("refCd45").textContent     = `Normal: ${co.cd45Low}–${co.cd45High}`;
+  document.getElementById("refSsc").textContent      = `Normal: ≥${co.sscLow}`;
+  document.getElementById("refBcp").textContent      = `Normal: ≥${co.bcpLow}%`;
+  document.getElementById("refCd71cv").textContent   = `Normal: ≤${co.cd71cv}%`;
+  document.getElementById("refCd36cv").textContent   = `Normal: ≤${co.cd36cv}%`;
+  document.getElementById("refCd71expr").textContent = `Normal: ≥${co.cd71expr}`;
+  document.getElementById("refCd117").textContent    = `Normal: ${co.cd117Low}–${co.cd117High}%`;
+  document.getElementById("refNeutLymph").textContent= `Normal: ≥${co.neutLow}`;
+  document.getElementById("refMonoPct").textContent  = `Normal: ≤${co.monoHigh}%`;
+}
+
+/* ===== SCORING FUNCTIONS ===== */
+function ogata(co){
+  const mp = nval("mpPct"), cd45 = nval("cd45"), ssc = nval("sscGrans"), bcp = nval("bcpPct");
+  const details = []; let score = 0; const missing = [];
+  function addItem(name, normal, why){
+    if(!normal) score++;
+    details.push(`${normal ? "✓" : "✗"} ${name}${why ? ` — ${why}` : ""}`);
+  }
+  if(mp === null) missing.push("Myeloid progenitors %"); else addItem("Myeloid progenitors %", mp <= co.mpHigh, mp > co.mpHigh ? `${mp}% (threshold >${co.mpHigh}%)` : "");
+  if(cd45 === null) missing.push("CD45 expression"); else addItem("CD45 expression", cd45 >= co.cd45Low && cd45 <= co.cd45High, (cd45 < co.cd45Low || cd45 > co.cd45High) ? `${cd45} (reference ${co.cd45Low}–${co.cd45High})` : "");
+  if(ssc === null) missing.push("SSC granulocytes"); else addItem("SSC granulocytes", ssc >= co.sscLow, ssc < co.sscLow ? `${ssc} (threshold <${co.sscLow})` : "");
+  if(bcp === null) missing.push("B-cell progenitors %"); else addItem("B-cell progenitors %", bcp >= co.bcpLow, bcp < co.bcpLow ? `${bcp}% (threshold <${co.bcpLow}%)` : "");
+  const complete = missing.length === 0;
+  const abnormal = complete ? score >= co.ogataScore : null;
+  return {score, maxScore:4, details, missing, abnormal, mp};
+}
+
+function erythroid(co){
+  const cd71cv = nval("cd71cv"), cd36cv = nval("cd36cv"), cd71expr = nval("cd71expr"), cd117 = nval("cd117ery");
+  const missing = [], hits = []; let score = 0;
+  if(cd71cv === null) missing.push("CD71 CV"); else if(cd71cv > co.cd71cv){ score++; hits.push(`CD71 CV ${cd71cv}% (threshold >${co.cd71cv}%)`); }
+  if(cd36cv === null) missing.push("CD36 CV"); else if(cd36cv > co.cd36cv){ score++; hits.push(`CD36 CV ${cd36cv}% (threshold >${co.cd36cv}%)`); }
+  if(cd71expr === null) missing.push("CD71 expression"); else if(cd71expr < co.cd71expr){ score++; hits.push(`CD71 expression ${cd71expr} (threshold <${co.cd71expr})`); }
+  if(cd117 === null) missing.push("CD117+ precursors"); else if(cd117 < co.cd117Low || cd117 > co.cd117High){ score++; hits.push(`CD117+ ${cd117}% (reference ${co.cd117Low}–${co.cd117High}%)`); }
+  const complete = missing.length === 0;
+  let abnormal = null;
+  if(complete){ const cvGate = (nval("cd71cv") > co.cd71cv) || (nval("cd36cv") > co.cd36cv); abnormal = score >= co.eryScore && cvGate; }
+  return {score, maxScore:4, hits, missing, abnormal};
+}
+
+function mpAberrancy(mp, co){
+  const missing = mp === null ? ["Myeloid progenitors %"] : [];
+  const cA = countChecked(".mpEarly"), cB = countChecked(".mpOther");
+  let abnormal = null; const reasons = [];
+  if(missing.length === 0){
+    if(mp > co.mpVHigh){ abnormal = true; reasons.push(`Myeloid progenitors ${mp}% (>5% — abnormal regardless of phenotype)`); }
+    else{
+      if(cA >= co.mpA){ abnormal = true; reasons.push(`${cA} Group A (early) aberranc${cA===1?"y":"ies"} (threshold ≥${co.mpA})`); }
+      if(cB >= co.mpB){ abnormal = true; reasons.push(`${cB} Group B (other) aberranc${cB===1?"y":"ies"} (threshold ≥${co.mpB})`); }
+      if(!abnormal){ abnormal = false; reasons.push(`MP ${mp}% ≤${co.mpVHigh}%; Group A=${cA}, Group B=${cB} — below thresholds`); }
+    }
+  }
+  return {abnormal, reasons, missing, cA, cB};
+}
+
+function granulocytes(co){
+  const ratio = nval("neutLymph");
+  const missing = ratio === null ? ["Neutrophil/Lymphocyte ratio"] : [];
+  const mCount = countChecked(".granChk");
+  let abnormal = null; const reasons = [];
+  if(missing.length === 0){
+    if(ratio < co.neutLow){ abnormal = true; reasons.push(`Neut/Lymph ratio ${ratio} (threshold <${co.neutLow})`); }
+    if(mCount >= 1){ abnormal = true; reasons.push(`${mCount} granulocyte aberranc${mCount===1?"y":"ies"} identified`); }
+    if(!abnormal){ abnormal = false; reasons.push(`Ratio ${ratio} ≥ ${co.neutLow} and no granulocyte aberrancies identified`); }
+  }
+  return {abnormal, reasons, missing, mCount};
+}
+
+function monocytes(co){
+  const pct = nval("monoPct");
+  const missing = pct === null ? ["Monocyte %"] : [];
+  const mCount = countChecked(".monoChk");
+  let abnormal = null; const reasons = [];
+  if(missing.length === 0){
+    if(pct > co.monoHigh){ abnormal = true; reasons.push(`Monocyte ${pct}% (threshold >${co.monoHigh}%)`); }
+    if(mCount >= 1){ abnormal = true; reasons.push(`${mCount} monocyte aberranc${mCount===1?"y":"ies"} identified`); }
+    if(!abnormal){ abnormal = false; reasons.push(`Monocyte ${pct}% ≤ ${co.monoHigh}% and no aberrancies identified`); }
+  }
+  return {abnormal, reasons, missing, mCount};
+}
+
+function integrated(og, ery, mp, gr, mo, co){
+  const allMissing = [...og.missing, ...ery.missing, ...mp.missing, ...gr.missing, ...mo.missing];
+  let nAbn = 0; const abnModules = [];
+  if(og.abnormal === true){ nAbn++; abnModules.push("Diagnostic score (Ogata)"); }
+  if(ery.abnormal === true){ nAbn++; abnModules.push("Erythroid score"); }
+  if(mp.abnormal === true){ nAbn++; abnModules.push("Myeloid progenitors"); }
+  if(gr.abnormal === true){ nAbn++; abnModules.push("Granulocytes"); }
+  if(mo.abnormal === true){ nAbn++; abnModules.push("Monocytes"); }
+
+  let band = "Normal / Mild";
+  if(nAbn >= 4) band = "Severe";
+  else if(nAbn >= 2) band = "Moderate";
+
+  const labelled = allMissing.length > 0 ? null : nAbn >= co.intScore;
+  return {nAbn, abnModules, band, labelled, allMissing};
+}
+
+/* ===== TILE UPDATE ===== */
+function setTile(id, valId, state, val, sub){
+  const el = document.getElementById(id);
+  el.className = `tile ${state}`;
+  document.getElementById(valId).textContent = val;
+}
+
+/* ===== MODULE OUTPUT HTML ===== */
+function modHtml(abnormal, pillText, lines){
+  const cls = abnormal === null ? "warn" : abnormal ? "bad" : "ok";
+  const p = pill(pillText, cls);
+  return `<div>${p}</div><div style="margin-top:6px;font-size:12px;line-height:1.7;font-family:ui-monospace,Consolas,monospace">${lines.join("<br>")}</div>`;
+}
+
+/* ===== RENDER ===== */
+function render(){
+  const co = cutoffs();
+  updateRefLabels(co);
+
+  const og = ogata(co);
+  const ery = erythroid(co);
+  const mp = mpAberrancy(og.mp, co);
+  const gr = granulocytes(co);
+  const mo = monocytes(co);
+  const integ = integrated(og, ery, mp, gr, mo, co);
+
+  /* Ogata */
+  document.getElementById("ogataOut").innerHTML = modHtml(
+    og.abnormal,
+    og.abnormal === null ? "Incomplete — missing data" : `Ogata score ${og.score}/${og.maxScore} — ${og.abnormal ? "Abnormal" : "Normal"}`,
+    [...og.details, ...(og.missing.length ? ["", "Missing: " + og.missing.join(", ")] : [])]
+  );
+  document.getElementById("ogataOut").className = `modOut ${og.abnormal === null ? "warn" : og.abnormal ? "bad" : "ok"}`;
+
+  /* Erythroid */
+  const eryLines = ery.hits.length ? ["Trigger(s):", ...ery.hits.map(h=>`  • ${h}`)] : ["No trigger criteria met."];
+  document.getElementById("eryOut").innerHTML = modHtml(
+    ery.abnormal,
+    ery.abnormal === null ? "Incomplete — missing data" : `Erythroid score ${ery.score}/${ery.maxScore} — ${ery.abnormal ? "Abnormal" : "Normal"}`,
+    [...eryLines, ...(ery.missing.length ? ["", "Missing: " + ery.missing.join(", ")] : [])]
+  );
+  document.getElementById("eryOut").className = `modOut ${ery.abnormal === null ? "warn" : ery.abnormal ? "bad" : "ok"}`;
+
+  /* MP */
+  document.getElementById("mpAberOut").innerHTML = modHtml(
+    mp.abnormal,
+    mp.abnormal === null ? "Incomplete — missing data" : `Myeloid progenitors — ${mp.abnormal ? "Abnormal" : "Normal"}`,
+    [`Group A (early): ${mp.cA}  |  Group B (other): ${mp.cB}`, ...(mp.reasons.length ? ["", ...mp.reasons.map(r=>`  • ${r}`)] : []), ...(mp.missing.length ? ["", "Missing: " + mp.missing.join(", ")] : [])]
+  );
+  document.getElementById("mpAberOut").className = `modOut ${mp.abnormal === null ? "warn" : mp.abnormal ? "bad" : "ok"}`;
+
+  /* Gran */
+  document.getElementById("granOut").innerHTML = modHtml(
+    gr.abnormal,
+    gr.abnormal === null ? "Incomplete — missing data" : `Granulocytes — ${gr.abnormal ? "Abnormal" : "Normal"}`,
+    [...gr.reasons.map(r=>`  • ${r}`), ...(gr.missing.length ? ["", "Missing: " + gr.missing.join(", ")] : [])]
+  );
+  document.getElementById("granOut").className = `modOut ${gr.abnormal === null ? "warn" : gr.abnormal ? "bad" : "ok"}`;
+
+  /* Mono */
+  document.getElementById("monoOut").innerHTML = modHtml(
+    mo.abnormal,
+    mo.abnormal === null ? "Incomplete — missing data" : `Monocytes — ${mo.abnormal ? "Abnormal" : "Normal"}`,
+    [...mo.reasons.map(r=>`  • ${r}`), ...(mo.missing.length ? ["", "Missing: " + mo.missing.join(", ")] : [])]
+  );
+  document.getElementById("monoOut").className = `modOut ${mo.abnormal === null ? "warn" : mo.abnormal ? "bad" : "ok"}`;
+
+  /* Integrated */
+  const intLines = [
+    `Abnormal modules: ${integ.nAbn}/5`,
+    ...(integ.abnModules.length ? ["", "Abnormal:", ...integ.abnModules.map(m=>`  • ${m}`)] : []),
+    ...(integ.allMissing.length ? ["", `Note: ${integ.allMissing.length} input(s) missing — result may be incomplete`] : [])
+  ];
+  document.getElementById("intOut").innerHTML = modHtml(
+    integ.labelled,
+    integ.labelled === null ? "Indeterminate — insufficient data" : `Integrated conclusion: ${integ.band} — ${integ.labelled ? "Features consistent with MDS" : "Not classified as MDS by current criteria"}`,
+    intLines
+  );
+  document.getElementById("intOut").className = `modOut ${integ.labelled === null ? "warn" : integ.labelled ? "bad" : "ok"}`;
+
+  /* Dashboard tiles */
+  setTile("tileOgata","tileOgataVal", og.abnormal===null?"warn":og.abnormal?"bad":"ok", og.abnormal===null?"–":`${og.score}/4`, "");
+  setTile("tileEry","tileEryVal", ery.abnormal===null?"warn":ery.abnormal?"bad":"ok", ery.abnormal===null?"–":`${ery.score}/4`, "");
+  setTile("tileMP","tileMPVal", mp.abnormal===null?"warn":mp.abnormal?"bad":"ok", mp.abnormal===null?"–":mp.abnormal?"Abn":"Nml", "");
+  setTile("tileGran","tileGranVal", gr.abnormal===null?"warn":gr.abnormal?"bad":"ok", gr.abnormal===null?"–":gr.abnormal?"Abn":"Nml", "");
+  setTile("tileMono","tileMonoVal", mo.abnormal===null?"warn":mo.abnormal?"bad":"ok", mo.abnormal===null?"–":mo.abnormal?"Abn":"Nml", "");
+  setTile("tileInt","tileIntVal", integ.labelled===null?"warn":integ.labelled?"bad":"ok", integ.labelled===null?"–":integ.labelled?"MDS":"Not MDS", "");
+
+  /* Severity bar */
+  ["seg0","seg1","seg2"].forEach(id => document.getElementById(id).classList.remove("active"));
+  const segMap = {"Normal / Mild":"seg0","Moderate":"seg1","Severe":"seg2"};
+  if(segMap[integ.band]) document.getElementById(segMap[integ.band]).classList.add("active");
+
+  /* Aberrancy bar */
+  const ogAbn = og.missing.length ? 0 : og.score;
+  const total = countChecked(".mpEarly") + countChecked(".mpOther") + countChecked(".granChk") + countChecked(".monoChk") + ogAbn;
+  const max = 20;
+  const frac = Math.min(1, total/max);
+  const bar = document.getElementById("aberBar");
+  bar.style.width = (frac*100)+"%";
+  if(frac >= 0.66){ bar.style.background="var(--badFill)"; bar.style.borderRightColor="var(--bad)"; }
+  else if(frac >= 0.33){ bar.style.background="var(--warnFill)"; bar.style.borderRightColor="var(--warnBorder)"; }
+  else{ bar.style.background="var(--okFill)"; bar.style.borderRightColor="var(--ok)"; }
+  document.getElementById("aberLabel").textContent = `Aberrancy count: ${total}`;
+
+  /* Report */
+  buildReport(og, ery, mp, gr, mo, integ, co);
+}
+
+/* ===== REPORT BUILDER ===== */
+function buildReport(og, ery, mp, gr, mo, integ, co){
+  const v = id => document.getElementById(id)?.value?.trim() || "N/A";
+  const dateStr = d => { try{ return d ? new Date(d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : "N/A"; }catch{ return d||"N/A"; }};
+
+  const lines = [
+    `ELN iMDS FLOW CYTOMETRY SCORING REPORT`,
+    `${"─".repeat(60)}`,
+    ``,
+    `CASE DETAILS`,
+    `Hospital number : ${v("hospitalNo")}`,
+    `Sample ID       : ${v("sampleId")}`,
+    `Patient name    : ${[v("forename"),v("surname")].filter(x=>x!=="N/A").join(" ")||"N/A"}`,
+    `Date of birth   : ${dateStr(document.getElementById("dob")?.value)}`,
+    `Sex             : ${document.getElementById("sex")?.value||"N/A"}`,
+    `Date of sample  : ${dateStr(document.getElementById("dateSample")?.value)}`,
+    `Date analysed   : ${dateStr(document.getElementById("dateRun")?.value)}`,
+    `Specimen        : ${document.getElementById("specimen")?.value||"N/A"}`,
+    `Clinical info   : ${v("clinical")}`,
+    `Reporting scientist: ${v("operator")}`,
+    ``,
+    `${"─".repeat(60)}`,
+    `INTEGRATED CONCLUSION`,
+    `${"─".repeat(60)}`,
+    ``,
+    `Integrated flow result : ${integ.band}`,
+    `iMDS classification    : ${integ.labelled === null ? "Indeterminate (insufficient data)" : integ.labelled ? "Features consistent with MDS" : "Not classified as MDS by current criteria"}`,
+    `Abnormal modules       : ${integ.nAbn}/5`,
+    ``,
+    `${"─".repeat(60)}`,
+    `MODULE RESULTS`,
+    `${"─".repeat(60)}`,
+    ``,
+    `1. DIAGNOSTIC SCORE (OGATA)`,
+    `   Score: ${og.missing.length ? "Incomplete" : `${og.score}/${og.maxScore}`}   Result: ${og.abnormal === null ? "Indeterminate" : og.abnormal ? "ABNORMAL" : "Normal"}`,
+    ...og.details.map(d => `   ${d}`),
+    ...(og.missing.length ? [`   Missing: ${og.missing.join(", ")}`] : []),
+    ``,
+    `2. ERYTHROID SCORE`,
+    `   Score: ${ery.missing.length ? "Incomplete" : `${ery.score}/${ery.maxScore}`}   Result: ${ery.abnormal === null ? "Indeterminate" : ery.abnormal ? "ABNORMAL" : "Normal"}`,
+    ...(ery.hits.length ? ery.hits.map(h => `   • ${h}`) : ["   No erythroid trigger criteria met."]),
+    ...(ery.missing.length ? [`   Missing: ${ery.missing.join(", ")}`] : []),
+    ``,
+    `3. MYELOID PROGENITORS`,
+    `   Result: ${mp.abnormal === null ? "Indeterminate" : mp.abnormal ? "ABNORMAL" : "Normal"}   Group A: ${mp.cA}   Group B: ${mp.cB}`,
+    ...mp.reasons.map(r => `   • ${r}`),
+    ...(mp.missing.length ? [`   Missing: ${mp.missing.join(", ")}`] : []),
+    ``,
+    `4. GRANULOCYTES`,
+    `   Result: ${gr.abnormal === null ? "Indeterminate" : gr.abnormal ? "ABNORMAL" : "Normal"}   Aberrancies ticked: ${gr.mCount}`,
+    ...gr.reasons.map(r => `   • ${r}`),
+    ...(gr.missing.length ? [`   Missing: ${gr.missing.join(", ")}`] : []),
+    ``,
+    `5. MONOCYTES`,
+    `   Result: ${mo.abnormal === null ? "Indeterminate" : mo.abnormal ? "ABNORMAL" : "Normal"}   Aberrancies ticked: ${mo.mCount}`,
+    ...mo.reasons.map(r => `   • ${r}`),
+    ...(mo.missing.length ? [`   Missing: ${mo.missing.join(", ")}`] : []),
+    ``,
+  ];
+
+  const notes = document.getElementById("notes")?.value?.trim();
+  if(notes){ lines.push(`${"─".repeat(60)}`); lines.push(`NOTES`); lines.push(`${"─".repeat(60)}`); lines.push(``); lines.push(notes); lines.push(``); }
+
+  lines.push(`${"─".repeat(60)}`);
+  lines.push(`DISCLAIMER`);
+  lines.push(`${"─".repeat(60)}`);
+  lines.push(``);
+  lines.push(`This report represents decision support output from the ELN iMDS flow`);
+  lines.push(`cytometry scoring tool. Results must be interpreted in clinical context`);
+  lines.push(`alongside morphology, cytogenetics, and molecular findings by a`);
+  lines.push(`qualified haematology specialist. No patient data is stored or`);
+  lines.push(`transmitted by this tool.`);
+
+  document.getElementById("reportText").textContent = lines.join("\n");
+}
+
+/* ===== TABS ===== */
+document.querySelectorAll(".tab").forEach(tab => {
+  tab.addEventListener("click", () => {
+    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+    document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+    tab.classList.add("active");
+    document.getElementById("panel-" + tab.dataset.tab).classList.add("active");
+    if(tab.dataset.tab === "report") buildReport(ogata(cutoffs()), erythroid(cutoffs()), mpAberrancy(nval("mpPct"), cutoffs()), granulocytes(cutoffs()), monocytes(cutoffs()), integrated(ogata(cutoffs()), erythroid(cutoffs()), mpAberrancy(nval("mpPct"),cutoffs()), granulocytes(cutoffs()), monocytes(cutoffs()), cutoffs()), cutoffs());
+  });
+});
+
+/* ===== RENDER CHECKBOX LISTS ===== */
+function mkChk(item, cls){ return `<label><input type="checkbox" class="${cls}" id="${item.id}"> ${item.label}</label>`; }
+document.getElementById("mpEarlyGrid").innerHTML = TABLE.mp.early.map(x => mkChk(x,"mpEarly")).join("");
+document.getElementById("mpOtherGrid").innerHTML = TABLE.mp.other.map(x => mkChk(x,"mpOther")).join("");
+document.getElementById("granGrid").innerHTML = TABLE.gran.map(x => mkChk(x,"granChk")).join("");
+document.getElementById("monoGrid").innerHTML = TABLE.mono.map(x => mkChk(x,"monoChk")).join("");
+
+/* ===== WIRE ALL INPUTS ===== */
+function wireInputs(){
+  document.querySelectorAll("input,select,textarea").forEach(el => {
+    el.addEventListener("input", render);
+    el.addEventListener("change", render);
+  });
+}
+wireInputs();
+
+/* ===== COPY BUTTON ===== */
+document.getElementById("copyBtn").addEventListener("click", async () => {
+  try{
+    await navigator.clipboard.writeText(document.getElementById("reportText").textContent);
+    document.getElementById("copyStatus").textContent = "Copied to clipboard.";
+    setTimeout(() => document.getElementById("copyStatus").textContent = "", 1800);
+  }catch{
+    document.getElementById("copyStatus").textContent = "Copy failed — select text manually.";
+  }
+});
+
+/* ===== RESET ===== */
+function doReset(){
+  if(!confirm("Reset all entered data?")) return;
+  document.querySelectorAll("input[type='number'], input[type='text'], input[type='date'], textarea").forEach(x => x.value = "");
+  document.querySelectorAll("input[type='checkbox']").forEach(x => x.checked = false);
+  document.getElementById("sex").value = "";
+  document.getElementById("specimen").selectedIndex = 0;
+  render();
+}
+
+/* INIT */
+render();
+</script>
+</body>
+</html>
