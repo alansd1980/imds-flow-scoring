@@ -183,23 +183,19 @@ hr.sep{border:none;border-top:1px solid #eee;margin:12px 0}
           <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
           Case Details
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-          <div>
-            <div class="frow"><label for="hospitalNo">Hospital number</label><input id="hospitalNo" type="text" autocomplete="off" placeholder="Enter hospital number"></div>
-            <div class="frow"><label for="sampleId">Sample ID</label><input id="sampleId" type="text" autocomplete="off" placeholder="Enter sample ID"></div>
-            <div class="frow"><label for="surname">Surname</label><input id="surname" type="text" autocomplete="off" placeholder="Patient surname"></div>
-            <div class="frow"><label for="forename">Forename</label><input id="forename" type="text" autocomplete="off" placeholder="Patient forename"></div>
-            <div class="frow"><label for="sex">Sex</label>
-              <select id="sex"><option value="">– select –</option><option>Female</option><option>Male</option><option>Other / Not stated</option></select>
-            </div>
+        <div>
+          <div class="frow"><label for="hospitalNo">Hospital number</label><input id="hospitalNo" type="text" autocomplete="off" placeholder="Enter hospital number"></div>
+          <div class="frow"><label for="sampleId">Sample ID</label><input id="sampleId" type="text" autocomplete="off" placeholder="Enter sample ID"></div>
+          <div class="frow"><label for="surname">Surname</label><input id="surname" type="text" autocomplete="off" placeholder="Patient surname"></div>
+          <div class="frow"><label for="forename">Forename</label><input id="forename" type="text" autocomplete="off" placeholder="Patient forename"></div>
+          <div class="frow"><label for="dob">Date of birth</label><input id="dob" type="date"></div>
+          <div class="frow"><label for="sex">Sex</label>
+            <select id="sex"><option value="">– select –</option><option>Female</option><option>Male</option><option>Other / Not stated</option></select>
           </div>
-          <div>
-            <div class="frow"><label for="dob">Date of birth</label><input id="dob" type="date"></div>
-            <div class="frow"><label for="dateSample">Date of sample</label><input id="dateSample" type="date"></div>
-            <div class="frow"><label for="dateRun">Date analysed</label><input id="dateRun" type="date"></div>
-            <div class="frow"><label for="clinical">Clinical indication</label><input id="clinical" type="text" autocomplete="off" placeholder="e.g. Suspected MDS"></div>
-            <div class="frow"><label for="operator">Reporting scientist</label><input id="operator" type="text" autocomplete="off" placeholder="Name"></div>
-          </div>
+          <div class="frow"><label for="dateSample">Date of sample</label><input id="dateSample" type="date"></div>
+          <div class="frow"><label for="dateRun">Date analysed</label><input id="dateRun" type="date"></div>
+          <div class="frow"><label for="clinical">Clinical indication</label><input id="clinical" type="text" autocomplete="off" placeholder="e.g. Suspected MDS"></div>
+          <div class="frow"><label for="operator">Reporting scientist</label><input id="operator" type="text" autocomplete="off" placeholder="Name"></div>
         </div>
         <div class="frow"><label for="specimen">Specimen type</label>
           <select id="specimen"><option>Bone marrow aspirate</option><option>Peripheral blood</option><option>Other</option></select>
